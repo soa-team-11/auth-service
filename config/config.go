@@ -9,9 +9,11 @@ import (
 )
 
 type ProjectConfig struct {
-	Port        string
-	DatabaseURL string
-	DebugMode   bool
+	Port      string
+	DebugMode bool
+
+	MongoURI string
+	MongoDB  string
 }
 
 func LoadConfig() *ProjectConfig {
@@ -26,9 +28,10 @@ func LoadConfig() *ProjectConfig {
 	}
 
 	return &ProjectConfig{
-		Port:        getEnv("PORT", "3001"),
-		DatabaseURL: getEnv("DATABASE_URL", ""),
-		DebugMode:   debugMode,
+		Port:      getEnv("PORT", "3001"),
+		DebugMode: debugMode,
+		MongoURI:  getEnv("MONGO_URI", ""),
+		MongoDB:   getEnv("MONGO_DB", "auth-db"),
 	}
 }
 
