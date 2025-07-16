@@ -1,14 +1,14 @@
-package mongo_connection
+package mongo
 
 import (
 	"context"
-	"log"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/soa-team-11/auth-service/config"
+	"github.com/soa-team-11/auth-service/utils"
 )
 
 var (
@@ -16,8 +16,8 @@ var (
 )
 
 func init() {
-	cfg := config.LoadConfig()
-	uri := cfg.MongoURI
+	uri := utils.Getenv("MONGO_URI", "mongodb://localhost:27017")
+	dbName := utils.Getenv("MONGO_DB", "auth-db")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -33,7 +33,7 @@ func init() {
 
 	log.Printf("Connected to MongoDB on %s", uri)
 
-	db = client.Database(cfg.MongoDB)
+	db = client.Database(dbName)
 }
 
 func GetDatabase() *mongo.Database {
