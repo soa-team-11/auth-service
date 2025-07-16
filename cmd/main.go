@@ -1,26 +1,19 @@
 package main
 
 import (
-	"log"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	log "github.com/sirupsen/logrus"
 
-	"github.com/soa-team-11/auth-service/config"
+	"github.com/soa-team-11/auth-service/api/routers"
+	"github.com/soa-team-11/auth-service/utils"
 )
 
 func main() {
-	cfg := config.LoadConfig()
+	router := routers.Router()
 
-	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	port := utils.Getenv("PORT", "3001")
 
-	log.Printf("Starting server on port %s", cfg.Port)
-
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello World!"))
-	})
-
-	log.Fatal(http.ListenAndServe(":"+cfg.Port, r))
+	log.Infof("Running services on PORT %s", port)
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }

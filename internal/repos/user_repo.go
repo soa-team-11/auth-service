@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	mc "github.com/soa-team-11/auth-service/internal/database/mongo"
+	mg "github.com/soa-team-11/auth-service/internal/providers/mongo"
 )
 
 type UserRepo interface {
@@ -24,7 +24,7 @@ type UserRepoImpl struct {
 
 func NewUserRepo() *UserRepoImpl {
 	return &UserRepoImpl{
-		users: mc.GetDatabase().Collection("users"),
+		users: mg.GetDatabase().Collection("users"),
 	}
 }
 
