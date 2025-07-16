@@ -7,10 +7,10 @@ import (
 )
 
 type User struct {
-	UserID   uuid.UUID `json:"userId" bson:"userId"`
+	UserID   uuid.UUID `json:"user_id" bson:"user_id"`
 	Username string    `json:"username" bson:"username"`
 	Email    string    `json:"email" bson:"email"`
-	Password string    `json:"password" bson:"password"`
+	Password string    `json:"password,omitempty" bson:"password"`
 	Role     UserRole  `json:"role" bson:"role"`
 }
 
@@ -26,8 +26,9 @@ func (u *User) IsValid() bool {
 	return u.Username != "" && u.Email != "" && u.Password != "" && isRole(u.Role)
 }
 
-func (u *User) ToJSON() ([]byte, error) {
-	return json.Marshal(u)
+func (u *User) ToJSON() []byte {
+	r, _ := json.Marshal(u)
+	return r
 }
 
 func UserFromJSON(jsonString []byte) (*User, error) {
