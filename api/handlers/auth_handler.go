@@ -26,7 +26,7 @@ func (ah *AuthHandler) Routes() chi.Router {
 	r.Use(middleware.AllowContentType("application/json"))
 
 	r.Post("/register", ah.HandleRegister)
-	r.Post("/login", nil)
+	//r.Post("/login", nil)
 
 	return r
 }

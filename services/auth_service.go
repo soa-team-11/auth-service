@@ -39,7 +39,7 @@ func (s *AuthService) Register(user models.User) (*models.User, error) {
 	created_user, err := s.userRepo.Create(user)
 
 	if err != nil {
-		return nil, fmt.Errorf("%s", err.Error())
+		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
 	return created_user, nil

@@ -11,7 +11,7 @@ func init() {
 	err := godotenv.Load()
 
 	if err != nil {
-		log.Panic("No .env file found, using default environment variables")
+		log.Warn("No .env file found, using default environment variables")
 	}
 }
 
