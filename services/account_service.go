@@ -28,5 +28,9 @@ func (s *AccountService) ListAccounts() ([]models.User, error) {
 		users[i].Password = ""
 	}
 
+	if len(users) == 0 {
+		return []models.User{}, nil
+	}
+
 	return users, nil
 }

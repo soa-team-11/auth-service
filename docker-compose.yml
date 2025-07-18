@@ -10,8 +10,6 @@ services:
       MONGO_INITDB_DATABASE: "auth-db"
     ports:
       - "27017:27017"
-    volumes:
-      - mongodata:/data/db
 
   auth-service:
     build: .
@@ -24,6 +22,3 @@ services:
       MONGO_DB: "auth-db"
     depends_on:
       - mongo
-
-volumes:
-  mongodata:
