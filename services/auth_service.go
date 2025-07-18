@@ -4,17 +4,20 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/soa-team-11/auth-service/api/external"
 	"github.com/soa-team-11/auth-service/internal/repos"
 	"github.com/soa-team-11/auth-service/models"
 )
 
 type AuthService struct {
-	userRepo repos.UserRepo
+	userRepo            repos.UserRepo
+	stakeholdersService external.StakeholderService
 }
 
 func NewAuthService() *AuthService {
 	return &AuthService{
-		userRepo: repos.NewUserRepo(),
+		userRepo:            repos.NewUserRepo(),
+		stakeholdersService: external.StakeholderService{},
 	}
 }
 
@@ -40,6 +43,12 @@ func (s *AuthService) Register(user models.User) (*models.User, error) {
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	_, err = s.stakeholdersService.CreateProfile(created_user.UserID)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create profile: %w", err)
 	}
 
 	return created_user, nil
