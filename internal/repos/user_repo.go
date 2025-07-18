@@ -11,7 +11,7 @@ import (
 )
 
 type UserRepo interface {
-	GetAll() []models.User
+	GetAll() ([]models.User, error)
 	GetByUsername(username string) (*models.User, error)
 	Create(user models.User) (*models.User, error)
 	Update(user models.User) (*models.User, error)
@@ -28,8 +28,21 @@ func NewUserRepo() *UserRepoImpl {
 	}
 }
 
-func (r *UserRepoImpl) GetAll() []models.User {
-	return nil
+func (r *UserRepoImpl) GetAll() ([]models.User, error) {
+	cur, err := r.users.Find(context.Background(), bson.M{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	var users []models.User
+	err = cur.All(context.Background(), &users)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 func (r *UserRepoImpl) GetByUsername(username string) (*models.User, error) {

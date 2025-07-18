@@ -13,21 +13,25 @@ import (
 	"github.com/soa-team-11/auth-service/services"
 )
 
-var (
-	authService = services.NewAuthService()
-)
+type AuthHandler struct {
+	authService *services.AuthService
+}
 
-func Routes() chi.Router {
+func NewAuthHandler() *AuthHandler {
+	return &AuthHandler{authService: services.NewAuthService()}
+}
+
+func (ah *AuthHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.AllowContentType("application/json"))
 
-	r.Post("/register", HandleRegister)
+	r.Post("/register", ah.HandleRegister)
 	r.Post("/login", nil)
 
 	return r
 }
 
-func HandleRegister(w http.ResponseWriter, r *http.Request) {
+func (ah *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	b, err := io.ReadAll(r.Body)
@@ -48,7 +52,7 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdUser, err := authService.Register(user)
+	createdUser, err := ah.authService.Register(user)
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
