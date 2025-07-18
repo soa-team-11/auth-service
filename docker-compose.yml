@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo-auth
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "admin"
+      MONGO_INITDB_ROOT_PASSWORD: "admin"
+      MONGO_INITDB_DATABASE: "auth-db"
+    ports:
+      - "27017:27017"
+
+  auth-service:
+    build: .
+    container_name: auth-service-go
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      MONGO_URI: "mongodb://admin:admin@mongo:27017"
+      MONGO_DB: "auth-db"
+    depends_on:
+      - mongo
