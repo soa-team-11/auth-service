@@ -35,7 +35,7 @@ func (s *AccountService) ListAccounts() ([]models.User, error) {
 	return users, nil
 }
 
-// ToggleBlockUser toggles the blocked status of a user by MongoDB _id and returns the new status (true if blocked, false if unblocked)
+// ToggleBlockUser toggles the blocked status of a user by user_id and returns the new status (true if blocked, false if unblocked)
 func (s *AccountService) ToggleBlockUser(userID string) (bool, error) {
 	return s.userRepo.(*repos.UserRepoImpl).ToggleBlockUser(userID)
 }

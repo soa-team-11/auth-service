@@ -24,7 +24,7 @@ func (ah *AccountsHandler) Routes() chi.Router {
 	r.Use(middleware.AllowContentType("application/json"))
 
 	r.Get("/list", ah.HandleListAccounts)
-	r.Patch("/block/{id}", ah.HandleToggleBlockUser)
+	r.Patch("/block/{userID}", ah.HandleToggleBlockUser)
 
 	return r
 }
@@ -53,13 +53,13 @@ func (ah *AccountsHandler) HandleListAccounts(w http.ResponseWriter, r *http.Req
 }
 
 // HandleToggleBlockUser toggles the blocked status of a user and returns the new status as JSON
-// Endpoint: PATCH /block/{id}
+// Endpoint: PATCH /block/{userID}
 func (ah *AccountsHandler) HandleToggleBlockUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	userID := chi.URLParam(r, "id")
+	userID := chi.URLParam(r, "userID")
 	if userID == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"message":"id is required"}`))
+		w.Write([]byte(`{"message":"userID is required"}`))
 		return
 	}
 	newStatus, err := ah.accountService.ToggleBlockUser(userID)
@@ -69,10 +69,10 @@ func (ah *AccountsHandler) HandleToggleBlockUser(w http.ResponseWriter, r *http.
 		return
 	}
 	response := struct {
-		ID      string `json:"id"`
+		UserID  string `json:"user_id"`
 		Blocked bool   `json:"blocked"`
 	}{
-		ID:      userID,
+		UserID:  userID,
 		Blocked: newStatus,
 	}
 	jsonResp, _ := json.Marshal(response)
