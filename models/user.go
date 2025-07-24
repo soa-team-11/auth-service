@@ -12,6 +12,7 @@ type User struct {
 	Email    string    `json:"email" bson:"email"`
 	Password string    `json:"password,omitempty" bson:"password"`
 	Role     UserRole  `json:"role" bson:"role"`
+	Blocked  bool      `json:"blocked" bson:"blocked"`
 }
 
 type UserRole string
