@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	mg "github.com/soa-team-11/auth-service/internal/providers/mongo"
+	"github.com/google/uuid"
 )
 
 type UserRepo interface {
@@ -68,7 +69,48 @@ func (r *UserRepoImpl) Create(user models.User) (*models.User, error) {
 }
 
 func (r *UserRepoImpl) Update(user models.User) (*models.User, error) {
-	return nil, nil
+	// Update the user document in MongoDB by user_id
+	filter := bson.M{"user_id": user.UserID}
+	update := bson.M{"$set": user}
+	_, err := r.users.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// ToggleBlockUser toggles the Blocked field for the specified user and returns the new status
+func (r *UserRepoImpl) ToggleBlockUser(userID string) (bool, error) {
+	uuidVal, err := uuid.Parse(userID)
+	if err != nil {
+		return false, err // invalid UUID
+	}
+	var user models.User
+	err = r.users.FindOne(context.Background(), bson.M{"user_id": uuidVal}).Decode(&user)
+	if err != nil {
+		return false, err
+	}
+	newStatus := !user.Blocked
+	update := bson.M{"$set": bson.M{"blocked": newStatus}}
+	_, err = r.users.UpdateOne(context.Background(), bson.M{"user_id": uuidVal}, update)
+	if err != nil {
+		return user.Blocked, err
+	}
+	return newStatus, nil
+}
+
+// IsUserBlocked checks if the user is blocked using user_id
+func (r *UserRepoImpl) IsUserBlocked(userID string) (bool, error) {
+	uuidVal, err := uuid.Parse(userID)
+	if err != nil {
+		return false, err // invalid UUID
+	}
+	var user models.User
+	err = r.users.FindOne(context.Background(), bson.M{"user_id": uuidVal}).Decode(&user)
+	if err != nil {
+		return false, err
+	}
+	return user.Blocked, nil
 }
 
 func (r *UserRepoImpl) Delete(user models.User) bool {
