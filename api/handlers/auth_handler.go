@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -33,30 +32,27 @@ func (ah *AuthHandler) Routes() chi.Router {
 
 func (ah *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	b, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, `{"message":"%s"}`, err.Error())
+		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
 	var user models.User
 	err = json.Unmarshal(b, &user)
-
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, `{"message":"%s"}`, err.Error())
+		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
 	createdUser, err := ah.authService.Register(user)
-
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, `{"message":"%s"}`, err.Error())
+		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 

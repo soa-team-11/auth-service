@@ -17,8 +17,6 @@ WORKDIR /app
 
 COPY --from=builder /go/bin/app .
 
-COPY .env .env
-
 EXPOSE 3001
 
 ENTRYPOINT ["./app"]
