@@ -2,11 +2,13 @@ package services
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/soa-team-11/auth-service/api/external"
 	"github.com/soa-team-11/auth-service/internal/repos"
 	"github.com/soa-team-11/auth-service/models"
+	"github.com/soa-team-11/auth-service/utils/jwt"
 )
 
 type AuthService struct {
@@ -19,6 +21,44 @@ func NewAuthService() *AuthService {
 		userRepo:            repos.NewUserRepo(),
 		stakeholdersService: external.StakeholderService{},
 	}
+}
+
+type LoginDTO struct {
+	UserID   uuid.UUID       `json:"user_id" bson:"user_id"`
+	Username string          `json:"username" bson:"username"`
+	Role     models.UserRole `json:"role" bson:"role"`
+	Token    string          `json:"token" bson:"token"`
+}
+
+func (s *AuthService) Login(username string, password string) (*LoginDTO, error) {
+	retrieved_user, _ := s.userRepo.GetByUsername(username)
+
+	if retrieved_user == nil {
+		return nil, fmt.Errorf("user '%s' not found", username)
+	}
+
+	if retrieved_user.Password != password {
+		return nil, fmt.Errorf("incorrect password")
+	}
+
+	if retrieved_user.Blocked {
+		return nil, fmt.Errorf("user is blocked")
+	}
+
+	claims := map[string]interface{}{
+		"user_id":  retrieved_user.UserID,
+		"username": retrieved_user.Username,
+		"role":     retrieved_user.Role,
+		"exp":      time.Now().Add(time.Hour * 48).Unix(), // expires in 48h
+	}
+
+	_, tokenString, _ := jwt.GetTokenAuth().Encode(claims)
+
+	return &LoginDTO{
+		UserID:   retrieved_user.UserID,
+		Username: retrieved_user.Username,
+		Role:     retrieved_user.Role,
+		Token:    tokenString}, nil
 }
 
 func (s *AuthService) Register(user models.User) (*models.User, error) {
