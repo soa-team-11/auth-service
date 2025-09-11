@@ -20,5 +20,6 @@ services:
       PORT: 3001
       MONGO_URI: "mongodb://admin:admin@mongo:27017"
       MONGO_DB: "auth-db"
+      STAKEHOLDERS_SERVICE_URL: "http://localhost:8081"
     depends_on:
       - mongo

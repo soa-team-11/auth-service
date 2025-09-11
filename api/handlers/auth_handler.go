@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -26,37 +25,70 @@ func (ah *AuthHandler) Routes() chi.Router {
 	r.Use(middleware.AllowContentType("application/json"))
 
 	r.Post("/register", ah.HandleRegister)
-	//r.Post("/login", nil)
+	r.Post("/login", ah.HandleLogin)
 
 	return r
 }
 
-func (ah *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
+func (ah *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	b, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, `{"message":"%s"}`, err.Error())
+		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
+		return
+	}
+
+	request_data := struct {
+		Username string `json:"username" bson:"username"`
+		Password string `json:"password,omitempty" bson:"password"`
+	}{}
+
+	err = json.Unmarshal(b, &request_data)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
+		return
+	}
+
+	login, err := ah.authService.Login(request_data.Username, request_data.Password)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(login)
+}
+
+func (ah *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	defer r.Body.Close()
+
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
 	var user models.User
 	err = json.Unmarshal(b, &user)
-
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, `{"message":"%s"}`, err.Error())
+		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
 	createdUser, err := ah.authService.Register(user)
-
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, `{"message":"%s"}`, err.Error())
+		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
