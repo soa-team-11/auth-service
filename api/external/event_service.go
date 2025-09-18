@@ -21,6 +21,7 @@ func NewEventService() *EventService {
 	return &EventService{rdb: rdb}
 }
 
+// Zahtev za shopping cart
 func (es *EventService) PublishUserRegistered(userId string) {
 	event := map[string]string{"userId": userId}
 	data, _ := json.Marshal(event)
@@ -28,7 +29,7 @@ func (es *EventService) PublishUserRegistered(userId string) {
 	if err := es.rdb.Publish(ctx, "user-registered", data).Err(); err != nil {
 		log.Println("Failed to publish user-registered event:", err)
 	} else {
-		log.Println("✅ Published user-registered event for user:", userId)
+		log.Println("Published user-registered event for user:", userId)
 	}
 }
 
@@ -46,12 +47,12 @@ func (es *EventService) SubscribeCartCreationFailures(deleteUserFunc func(userID
 			}
 
 			userID := data["userId"]
-			log.Println("🔄 Rolling back user:", userID)
+			log.Println("Rolling back user:", userID)
 
 			if err := deleteUserFunc(userID); err != nil {
 				log.Println("Failed to delete user:", err)
 			} else {
-				log.Println("✅ User deleted due to cart creation failure:", userID)
+				log.Println("User deleted due to cart creation failure:", userID)
 			}
 		}
 	}()
