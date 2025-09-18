@@ -5,11 +5,12 @@ import (
 
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
+	"github.com/soa-team-11/auth-service/utils/logger"
 )
 
 func init() {
+	logger.Init()
 	err := godotenv.Load()
-
 	if err != nil {
 		log.Warn("No .env file found, using default environment variables")
 	}

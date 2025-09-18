@@ -7,11 +7,13 @@ import (
 
 	"github.com/soa-team-11/auth-service/api/routers"
 	"github.com/soa-team-11/auth-service/utils"
+	"github.com/soa-team-11/auth-service/utils/logger"
 )
 
 func main() {
-	router := routers.Router()
+	logger.Init()
 
+	router := routers.Router()
 	port := utils.Getenv("PORT", "3001")
 
 	log.Infof("Running services on PORT %s", port)
