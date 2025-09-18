@@ -2,13 +2,14 @@ package repos
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/soa-team-11/auth-service/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	mg "github.com/soa-team-11/auth-service/internal/providers/mongo"
 	"github.com/google/uuid"
+	mg "github.com/soa-team-11/auth-service/internal/providers/mongo"
 )
 
 type UserRepo interface {
@@ -17,6 +18,7 @@ type UserRepo interface {
 	Create(user models.User) (*models.User, error)
 	Update(user models.User) (*models.User, error)
 	Delete(user models.User) bool
+	DeleteByID(userID string) error
 }
 
 type UserRepoImpl struct {
@@ -115,4 +117,24 @@ func (r *UserRepoImpl) IsUserBlocked(userID string) (bool, error) {
 
 func (r *UserRepoImpl) Delete(user models.User) bool {
 	return false
+}
+
+func (r *UserRepoImpl) DeleteByID(userID string) error {
+	ctx := context.Background()
+
+	uuidVal, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+
+	result, err := r.users.DeleteOne(ctx, bson.M{"user_id": uuidVal})
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return fmt.Errorf("user with ID %s not found", userID)
+	}
+
+	return nil
 }

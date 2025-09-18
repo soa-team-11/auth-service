@@ -8,16 +8,18 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/soa-team-11/auth-service/api/external"
 	"github.com/soa-team-11/auth-service/models"
 	"github.com/soa-team-11/auth-service/services"
 )
 
 type AuthHandler struct {
-	authService *services.AuthService
+	authService  *services.AuthService
+	eventService *external.EventService
 }
 
 func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{authService: services.NewAuthService()}
+	return &AuthHandler{authService: services.NewAuthService(), eventService: external.NewEventService()}
 }
 
 func (ah *AuthHandler) Routes() chi.Router {
@@ -91,6 +93,8 @@ func (ah *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
+
+	ah.eventService.PublishUserRegistered(createdUser.UserID.String())
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write(createdUser.ToJSON())

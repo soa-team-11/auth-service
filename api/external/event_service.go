@@ -1,0 +1,58 @@
+package external
+
+import (
+	"context"
+	"encoding/json"
+	"log"
+
+	"github.com/redis/go-redis/v9"
+)
+
+var ctx = context.Background()
+
+type EventService struct {
+	rdb *redis.Client
+}
+
+func NewEventService() *EventService {
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "redis:6379",
+	})
+	return &EventService{rdb: rdb}
+}
+
+func (es *EventService) PublishUserRegistered(userId string) {
+	event := map[string]string{"userId": userId}
+	data, _ := json.Marshal(event)
+
+	if err := es.rdb.Publish(ctx, "user-registered", data).Err(); err != nil {
+		log.Println("Failed to publish user-registered event:", err)
+	} else {
+		log.Println("✅ Published user-registered event for user:", userId)
+	}
+}
+
+// Kompenzacija
+func (es *EventService) SubscribeCartCreationFailures(deleteUserFunc func(userID string) error) {
+	pubsub := es.rdb.Subscribe(ctx, "cart-creation-failed")
+	ch := pubsub.Channel()
+
+	go func() {
+		for msg := range ch {
+			var data map[string]string
+			if err := json.Unmarshal([]byte(msg.Payload), &data); err != nil {
+				log.Println("Failed to parse failure event:", err)
+				continue
+			}
+
+			userID := data["userId"]
+			log.Println("🔄 Rolling back user:", userID)
+
+			if err := deleteUserFunc(userID); err != nil {
+				log.Println("Failed to delete user:", err)
+			} else {
+				log.Println("✅ User deleted due to cart creation failure:", userID)
+			}
+		}
+	}()
+}
