@@ -8,16 +8,31 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/soa-team-11/auth-service/api/external"
 	"github.com/soa-team-11/auth-service/models"
 	"github.com/soa-team-11/auth-service/services"
 )
 
 type AuthHandler struct {
-	authService *services.AuthService
+	authService  *services.AuthService
+	eventService *external.EventService
 }
 
 func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{authService: services.NewAuthService()}
+	authService := services.NewAuthService()
+	eventService := external.NewEventService()
+
+	handler := &AuthHandler{
+		authService:  authService,
+		eventService: eventService,
+	}
+
+	// subscribe na event za kompenzaciju
+	handler.eventService.SubscribeCartCreationFailures(func(userID string) error {
+		return authService.DeleteUser(userID)
+	})
+
+	return handler
 }
 
 func (ah *AuthHandler) Routes() chi.Router {
@@ -91,6 +106,9 @@ func (ah *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
+
+	// publish za sagu da se napravi i shopping cart
+	ah.eventService.PublishUserRegistered(createdUser.UserID.String())
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write(createdUser.ToJSON())

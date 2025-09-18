@@ -93,3 +93,7 @@ func (s *AuthService) Register(user models.User) (*models.User, error) {
 
 	return created_user, nil
 }
+
+func (s *AuthService) DeleteUser(userID string) error {
+	return s.userRepo.DeleteByID(userID)
+}
