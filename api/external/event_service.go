@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/otel"
 )
 
 var ctx = context.Background()
@@ -22,15 +23,22 @@ func NewEventService() *EventService {
 }
 
 // Zahtev za shopping cart
-func (es *EventService) PublishUserRegistered(userId string) {
+func (es *EventService) PublishUserRegistered(ctx context.Context, userId string) {
+	tracer := otel.Tracer("auth-service")
+	_, span := tracer.Start(ctx, "EventService.PublishUserRegistered")
+	defer span.End()
+
 	event := map[string]string{"userId": userId}
 	data, _ := json.Marshal(event)
 
 	if err := es.rdb.Publish(ctx, "user-registered", data).Err(); err != nil {
+		span.RecordError(err)
 		log.Println("Failed to publish user-registered event:", err)
 	} else {
 		log.Println("Published user-registered event for user:", userId)
 	}
+
+	span.End()
 }
 
 // Kompenzacija
