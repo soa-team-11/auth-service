@@ -18,12 +18,20 @@ func LogrusMiddleware(next http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
+		level := log.GetLevel()
+
+		if ww.Status() >= 500 {
+			level = log.ErrorLevel
+		} else if ww.Status() >= 400 {
+			level = log.WarnLevel
+		}
+
 		log.WithFields(log.Fields{
 			"method":      r.Method,
 			"path":        r.URL.Path,
 			"status":      ww.Status(),
-			"duration":    duration,
+			"duration_ms": duration.Milliseconds(),
 			"remote_addr": r.RemoteAddr,
-		}).Info("incoming request")
+		}).Log(level, "incoming request")
 	})
 }
