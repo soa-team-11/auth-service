@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"go.opentelemetry.io/otel"
 
 	"github.com/soa-team-11/auth-service/api/external"
 	"github.com/soa-team-11/auth-service/models"
@@ -52,11 +53,18 @@ func (ah *AuthHandler) Routes() chi.Router {
 }
 
 func (ah *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	tracer := otel.Tracer("auth-service")
+
 	w.Header().Set("Content-Type", "application/json")
 	defer r.Body.Close()
 
+	ctx, span := tracer.Start(ctx, "HandleLogin")
+	defer span.End()
+
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
@@ -70,14 +78,16 @@ func (ah *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(b, &request_data)
 
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
-	login, err := ah.authService.Login(request_data.Username, request_data.Password)
+	login, err := ah.authService.Login(ctx, request_data.Username, request_data.Password)
 
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
@@ -88,11 +98,18 @@ func (ah *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ah *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	tracer := otel.Tracer("auth-service")
+
 	w.Header().Set("Content-Type", "application/json")
 	defer r.Body.Close()
 
+	ctx, span := tracer.Start(ctx, "HandleRegister")
+	defer span.End()
+
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
@@ -101,20 +118,22 @@ func (ah *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	err = json.Unmarshal(b, &user)
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
-	createdUser, err := ah.authService.Register(user)
+	createdUser, err := ah.authService.Register(ctx, user)
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
 	// publish za sagu da se napravi i shopping cart
-	ah.eventService.PublishUserRegistered(createdUser.UserID.String())
+	ah.eventService.PublishUserRegistered(ctx, createdUser.UserID.String())
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write(createdUser.ToJSON())
