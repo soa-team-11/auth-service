@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/soa-team-11/auth-service/utils"
+	"github.com/soa-team-11/auth-service/utils/logger"
 )
 
 var (
@@ -16,6 +17,8 @@ var (
 )
 
 func init() {
+	logger.Init()
+
 	uri := utils.Getenv("MONGO_URI", "mongodb://localhost:27017")
 	dbName := utils.Getenv("MONGO_DB", "auth-db")
 

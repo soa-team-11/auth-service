@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/soa-team-11/auth-service/internal/repos"
 	"github.com/soa-team-11/auth-service/models"
 	"github.com/soa-team-11/auth-service/utils/jwt"
+	"go.opentelemetry.io/otel"
 )
 
 type AuthService struct {
@@ -30,8 +32,16 @@ type LoginDTO struct {
 	Token    string          `json:"token" bson:"token"`
 }
 
-func (s *AuthService) Login(username string, password string) (*LoginDTO, error) {
-	retrieved_user, _ := s.userRepo.GetByUsername(username)
+func (s *AuthService) Login(ctx context.Context, username string, password string) (*LoginDTO, error) {
+	tracer := otel.Tracer("auth-service")
+	_, span := tracer.Start(ctx, "AuthService.Login")
+	defer span.End()
+
+	retrieved_user, err := s.userRepo.GetByUsername(username)
+
+	if err != nil {
+		span.RecordError(err)
+	}
 
 	if retrieved_user == nil {
 		return nil, fmt.Errorf("user '%s' not found", username)
@@ -53,6 +63,7 @@ func (s *AuthService) Login(username string, password string) (*LoginDTO, error)
 	}
 
 	_, tokenString, _ := jwt.GetTokenAuth().Encode(claims)
+	span.End()
 
 	return &LoginDTO{
 		UserID:   retrieved_user.UserID,
@@ -61,7 +72,10 @@ func (s *AuthService) Login(username string, password string) (*LoginDTO, error)
 		Token:    tokenString}, nil
 }
 
-func (s *AuthService) Register(user models.User) (*models.User, error) {
+func (s *AuthService) Register(ctx context.Context, user models.User) (*models.User, error) {
+	tracer := otel.Tracer("auth-service")
+	_, span := tracer.Start(ctx, "AuthService.Register")
+	defer span.End()
 
 	// Check if user is valid
 	if !user.IsValid() {
@@ -82,15 +96,18 @@ func (s *AuthService) Register(user models.User) (*models.User, error) {
 	created_user, err := s.userRepo.Create(user)
 
 	if err != nil {
+		span.RecordError(err)
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
 	_, err = s.stakeholdersService.CreateProfile(created_user.UserID)
 
 	if err != nil {
+		span.RecordError(err)
 		return nil, fmt.Errorf("failed to create profile: %w", err)
 	}
 
+	span.End()
 	return created_user, nil
 }
 

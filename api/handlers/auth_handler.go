@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"go.opentelemetry.io/otel"
 
 	"github.com/soa-team-11/auth-service/api/external"
 	"github.com/soa-team-11/auth-service/models"
@@ -14,17 +16,20 @@ import (
 )
 
 type AuthHandler struct {
-	authService  *services.AuthService
-	eventService *external.EventService
+	authService     *services.AuthService
+	eventService    *external.EventService
+	accountsService *services.AccountService
 }
 
 func NewAuthHandler() *AuthHandler {
 	authService := services.NewAuthService()
+	accountsService := services.NewAccountService()
 	eventService := external.NewEventService()
 
 	handler := &AuthHandler{
-		authService:  authService,
-		eventService: eventService,
+		authService:     authService,
+		eventService:    eventService,
+		accountsService: accountsService,
 	}
 
 	// subscribe na event za kompenzaciju
@@ -41,16 +46,25 @@ func (ah *AuthHandler) Routes() chi.Router {
 
 	r.Post("/register", ah.HandleRegister)
 	r.Post("/login", ah.HandleLogin)
+	r.Get("/list", ah.HandleList)
+	r.Patch("/block/{userID}", ah.HandleToggleBlock)
 
 	return r
 }
 
 func (ah *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	tracer := otel.Tracer("auth-service")
+
 	w.Header().Set("Content-Type", "application/json")
 	defer r.Body.Close()
 
+	ctx, span := tracer.Start(ctx, "HandleLogin")
+	defer span.End()
+
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
@@ -64,14 +78,16 @@ func (ah *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(b, &request_data)
 
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
-	login, err := ah.authService.Login(request_data.Username, request_data.Password)
+	login, err := ah.authService.Login(ctx, request_data.Username, request_data.Password)
 
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
@@ -82,11 +98,18 @@ func (ah *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ah *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	tracer := otel.Tracer("auth-service")
+
 	w.Header().Set("Content-Type", "application/json")
 	defer r.Body.Close()
 
+	ctx, span := tracer.Start(ctx, "HandleRegister")
+	defer span.End()
+
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
@@ -95,21 +118,72 @@ func (ah *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	err = json.Unmarshal(b, &user)
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
-	createdUser, err := ah.authService.Register(user)
+	createdUser, err := ah.authService.Register(ctx, user)
 	if err != nil {
+		span.RecordError(err)
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
 	// publish za sagu da se napravi i shopping cart
-	ah.eventService.PublishUserRegistered(createdUser.UserID.String())
+	ah.eventService.PublishUserRegistered(ctx, createdUser.UserID.String())
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write(createdUser.ToJSON())
+}
+
+func (ah *AuthHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	accounts, err := ah.accountsService.ListAccounts()
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, `{"message":"%s"}`, err.Error())
+		return
+	}
+
+	accountsJSON, err := json.Marshal(accounts)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, `{"message":"%s"}`, err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(accountsJSON)
+}
+
+func (ah *AuthHandler) HandleToggleBlock(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	userID := chi.URLParam(r, "userID")
+	if userID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"message":"userID is required"}`))
+		return
+	}
+	newStatus, err := ah.accountsService.ToggleBlockUser(userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf(`{"message":"%s"}`, err.Error())))
+		return
+	}
+	response := struct {
+		UserID  string `json:"user_id"`
+		Blocked bool   `json:"blocked"`
+	}{
+		UserID:  userID,
+		Blocked: newStatus,
+	}
+	jsonResp, _ := json.Marshal(response)
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResp)
 }
