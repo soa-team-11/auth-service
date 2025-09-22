@@ -10,8 +10,7 @@ import (
 )
 
 var (
-	authHandler     = handlers.NewAuthHandler()
-	accountsHandler = handlers.NewAccountsHandler()
+	authHandler = handlers.NewAuthHandler()
 )
 
 func Router() http.Handler {
@@ -19,7 +18,6 @@ func Router() http.Handler {
 	r.Use(middleware.LogrusMiddleware)
 
 	r.Mount("/auth", authHandler.Routes())
-	r.Mount("/accounts", accountsHandler.Routes())
 
 	return r
 }
